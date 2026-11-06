@@ -151,7 +151,29 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
   </section>
  </div>
 </main></div>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore-compat.js"></script>
+
+<!-- Conexión MIAMI COCKTAILSS -->
 <script>
+  const miamiFirebaseConfig = {
+    apiKey: "AIzaSyBmoUTKDxADmiNTO4-8UB069N6tXLT_VsQ",
+    authDomain: "miami-cocktailss.firebaseapp.com",
+    projectId: "miami-cocktailss",
+    storageBucket: "miami-cocktailss.firebasestorage.app",
+    messagingSenderId: "475699072705",
+    appId: "1:475699072705:web:f585688c0aa98990fa0e40"
+  };
+
+  const miamiFirebaseApp = firebase.initializeApp(miamiFirebaseConfig);
+  const miamiFirebaseAuth = miamiFirebaseApp.auth();
+  const miamiFirestore = miamiFirebaseApp.firestore();
+
+  console.log("MIAMI COCKTAILSS conectado a Firebase");
+</script>
+ <script>
 const $=id=>document.getElementById(id), money=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(n||0), today=()=>new Date().toLocaleDateString('es-CO');
 const DEFAULT_USERS={admin:{password:'MiamiAdmin2026!',role:'admin',label:'Administrador'},empleado:{password:'MiamiEmpleado2026!',role:'employee',label:'Empleado'}};
 function getUsers(){try{return JSON.parse(localStorage.getItem('miamiUsers'))||DEFAULT_USERS}catch(e){return DEFAULT_USERS}}
