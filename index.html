@@ -47,15 +47,15 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
 <div id="loginScreen" class="login-screen">
  <div class="login-card">
   <div class="brand" style="padding:0 0 16px"><div><b>MIAMI COCKTAILSS</b><small>Acceso al sistema</small></div></div>
-  <h1>Bienvenido</h1><p class="sub">Ingresa con tu usuario y contraseña.</p>
-  <form onsubmit="login(event)"><label for="loginUser">Usuario</label><input id="loginUser" autocomplete="username" placeholder="Tu usuario" required><label for="loginPass">Contraseña</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="Tu contraseña" required><button type="submit">Ingresar</button></form>
-  <p id="loginError" class="red" role="alert"></p>
+  <h1>Bienvenido</h1><p class="sub">Ingresa con tu correo y contraseña de Firebase.</p>
+  <form onsubmit="return login(event)"><label for="loginUser">Correo electrónico</label><input id="loginUser" type="email" autocomplete="username" placeholder="tu-correo@gmail.com" required><label for="loginPass">Contraseña</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="Tu contraseña" required><button type="submit">Ingresar</button></form>
+  <p id="loginError" class="red" role="alert" style="margin-top:10px;font-weight:bold;"></p>
   <p class="role-note">Acceso exclusivo para administración y personal autorizado.</p>
  </div>
 </div>
 <div class="app" id="appRoot" style="display:none">
 <aside class="side">
- <div class="brand"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAASABIAAD/4QDsRXhpZgAATU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAC5ADAAIAAAAUAAAApJAEAAIAAAAUAAAAuJAQAAIAAAAHAAAAzJARAAIAAAAHAAAA1JASAAIAAAAHAAAA3JKQAAIAAAAEMDAwAJKRAAIAAAAEMDAwAJKSAAIAAAAEMDAwAKABAAMAAAABAAEAAKACAAQAAAABAAACgKADAAQAAAABAAACgAAAAAAyMDI2OjExOjA2IDEyOjQyOjE5ADIwMjY6MTE6MDYgMTI6NDI6MTkALTA1OjAwAAAtMDU6MDAAAC0wNTowMAAA/+0AfFBob3Rvc2hvcCAzLjAAOEJJTQQEAAAAAABEHAFaAAMbJUccAgAAAgACHAI/AAYxMjQyMTkcAj4ACDIwMjYxMTA2HAI3AAgyMDI2MTEwNhwCPAALMTI0MjE5LTA1MDA8QklNBCUAAAAAABDUJtaAgLnN55rZihr7ZCYR/8IAEQgCgAKAAwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAMCBAEFAAYHCAkKC//EAMMQAAEDAwIEAwQGBAcGBAgGcwECAAMRBBIhBTETIhAGQVEyFGFxIweBIJFCFaFSM7EkYjAWwXLRQ5I0ggjhU0AlYxc18JNzolBEsoPxJlQ2ZJR0wmDShKMYcOInRTdls1V1pJXDhfLTRnaA40dWZrQJChkaKCkqODk6SElKV1hZWmdoaWp3eHl6hoeIiYqQlpeYmZqgpaanqKmqsLW2t7i5usDExcbHyMnK0NTV1tfY2drg5OXm5+jp6vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAQIAAwQFBgcICQoL/8QAwxEAAgIBAwMDAgMFAgUCBASHAQACEQMQEiEEIDFBEwUwIjJRFEAGMyNhQhVxUjSBUCSRoUOxFgdiNVPw0SVgwUThcvEXgmM2cCZFVJInotIICQoYGRooKSo3ODk6RkdISUpVVldYWVpkZWZnaGlqc3R1dnd4eXqAg4SFhoeIiYqQk5SVlpeYmZqgo6SlpqeoqaqwsrO0tba3uLm6wMLDxMXGx8jJytDT1NXW19jZ2uDi4+Tl5ufo6ery8/T19vf4+fr/2wBDAAICAgICAgMCAgMFAwMDBQYFBQUFBggGBgYGBggKCAgICAgICgoKCgoKCgoMDAwMDAwODg4ODg8PDw8PDw8PDw//2wBDAQIDAwQEBAcEBAcQCwkLEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBD/2gAMAw0AARAAhKEAEQEDEQDF" alt="Mascota Miami cocktailss"><div><b>Miami cocktailss</b><small>Panel de administración</small></div></div>
+ <div class="brand"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAASABIAAD/4QDsRXhpZgAATU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAC5ADAAIAAAAUAAAApJAEAAIAAAAUAAAAuJAQAAIAAAAHAAAAzJARAAIAAAAHAAAA1JASAAIAAAAHAAAA3JKQAAIAAAAEMDAwAJKRAAIAAAAEMDAwAJKSAAIAAAAEMDAwAKABAAMAAAABAAEAAKACAAQAAAABAAACgKADAAQAAAABAAACgAAAAAAyMDI2OjExOjA2IDEyOjQyOjE5ADIwMjY6MTE6MDYgMTI6NDI6MTkALTA1OjAwAAAtMDU6MDAAAC0wNTowMAAA/+0AfFBob3Rvc2hvcCAzLjAAOEJJTQQEAAAAAABEHAFaAAMbJUccAgAAAgACHAI/AAYxMjQyMTkcAj4ACDIwMjYxMTA2HAI3AAgyMDI2MTEwNhwCPAALMTI0MjE5LTA1MDA8QklNBCUAAAAAABDUJtaAgLnN55rZihr7ZCYR/8IAEQgCgAKAAwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAMCBAEFAAYHCAkKC//EAMMQAAEDAwIEAwQGBAcGBAgGcwECAAMRBBIhBTETIhAGQVEyFGFxIweBIJFCFaFSM7EkYjAWwXLRQ5I0ggjhU0AlYxc18JNzolBEsoPxJlQ2ZJR0wmDShKMYcOInRTdls1V1pJXDhfLTRnaA40dWZrQJChkaKCkqODk6SElKV1hZWmdoaWp3eHl6hoeIiYqQlpeYmZqgpaanqKmqsLW2t7i5usDExcbHyMnK0NTV1tfY2drg5OXm5+jp6vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAQIAAwQFBgcICQoL/8QAwxEAAgIBAwMDAgMFAgUCBASHAQACEQMQEiEEIDFBEwUwIjJRFEAGMyNhQhVxUjSBUCSRoUOxFgdiNVPw0SVgwUThcvEXgmM2cCZFVJInotIICQoYGRooKSo3ODk6RkdISUpVVldYWVpkZWZnaGlqc3R1dnd4eXqAg4SFhoeIiYqQk5SVlpeYmZqgo6SlpqeoqaqwsrO0tba3uLm6wMLDxMXGx8jJytDT1NXW19jZ2uDi4+Tl5ufo6ery8/T19vf4+fr/2wBDAAICAgICAgMCAgMFAwMDBQYFBQUFBggGBgYGBggKCAgICAgICgoKCgoKCgoMDAwMDAwODg4ODg8PDw8PDw8PDw//2wBDAQIDAwQEBAcEBAcQCwkLEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBD/2gAIAwEAARECKEAEQEDEQDF" alt="Mascota Miami cocktailss"><div><b>Miami cocktailss</b><small>Panel de administración</small></div></div>
  <nav class="nav" id="nav">
   <button class="active" data-page="inicio" data-admin-only><span>▦</span>Dashboard</button>
   <button data-page="ventas"><span>🛒</span>Ventas</button>
@@ -69,7 +69,7 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
  <div class="sidefoot"><b>¡A vender con toda!</b><br>Controla tu negocio, tus cuentas y cada movimiento desde un solo lugar.</div>
 </aside>
 <main class="main">
- <header class="top"><div><b id="pageTitle">Dashboard</b><br><small id="today"></small></div><div class="user-tools"><span id="activeUser" class="pill">●</span><button id="changeCredentialsBtn" class="outline" onclick="changeCredentials()" data-admin-only>Claves</button><button class="outline" onclick="logout()">Salir</button></div></header>
+ <header class="top"><div><b id="pageTitle">Dashboard</b><br><small id="today"></small></div><div class="user-tools"><span id="activeUser" class="pill">●</span><button class="outline" onclick="logout()">Salir</button></div></header>
  <div class="content">
   <section id="inicio" class="page">
    <h1>¡Hola! 👋</h1><div class="sub">Este es el resumen de tu negocio.</div>
@@ -152,10 +152,10 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
  </div>
 </main></div>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore-compat.js"></script>
+<!-- Firebase SDK Compat (v9.23.0) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <!-- Conexión y Lógica MIAMI COCKTAILSS -->
 <script>
@@ -169,28 +169,28 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
   };
 
   const miamiFirebaseApp = firebase.initializeApp(miamiFirebaseConfig);
-  const miamiFirebaseAuth = miamiFirebaseApp.auth();
-  const miamiFirestore = miamiFirebaseApp.firestore();
+  const miamiFirebaseAuth = firebase.auth();
+  const miamiFirestore = firebase.firestore();
 
   const $=id=>document.getElementById(id), money=n=>new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).format(n||0), today=()=>new Date().toLocaleDateString('es-CO');
-  const DEFAULT_USERS={admin:{password:'MiamiAdmin2026!',role:'admin',label:'Administrador'},empleado:{password:'MiamiEmpleado2026!',role:'employee',label:'Empleado'}};
   
-  function getUsers(){try{return JSON.parse(localStorage.getItem('miamiUsers'))||DEFAULT_USERS}catch(e){return DEFAULT_USERS}}
   let currentUser=null;
 
   async function login(e){
-    e.preventDefault();
+    if(e) e.preventDefault();
     const email=$('loginUser').value.trim();
     const password=$('loginPass').value;
+    
+    $('loginError').textContent = 'Verificando con Firebase...';
     
     try {
       const userCredential = await miamiFirebaseAuth.signInWithEmailAndPassword(email, password);
       const user = userCredential.user;
       
-      const role = (email.toLowerCase().includes('admin')) ? 'admin' : 'employee';
+      const role = (email.toLowerCase().includes('admin') || email.toLowerCase().includes('miamicocktailss')) ? 'admin' : 'employee';
       const label = role === 'admin' ? 'Administrador' : 'Empleado';
       
-      currentUser = { username: email, role: role, label: label };
+      currentUser = { username: email, role: role, label: label, uid: user.uid };
       sessionStorage.setItem('miamiSession', JSON.stringify(currentUser));
       
       $('loginError').textContent = '';
@@ -198,8 +198,15 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
       applyAccess();
     } catch (error) {
       console.error("Error de autenticación:", error);
-      $('loginError').textContent = 'Correo o contraseña incorrectos en Firebase.';
+      let msg = 'Error al iniciar sesión.';
+      if (error.code === 'auth/invalid-email') msg = 'El formato del correo electrónico no es válido.';
+      else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') msg = 'Correo o contraseña incorrectos en Firebase.';
+      else if (error.code === 'auth/unauthorized-domain') msg = 'Dominio de GitHub no autorizado en Firebase Console.';
+      else msg = error.message || 'Error de conexión con Firebase.';
+      
+      $('loginError').textContent = msg;
     }
+    return false;
   }
 
   function applyAccess(){
@@ -209,22 +216,16 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     showPage(currentUser.role==='admin'?'inicio':'ventas');
   }
 
-  function logout(){currentUser=null;sessionStorage.removeItem('miamiSession');saleCart=[];applyAccess()}
+  function logout(){
+    miamiFirebaseAuth.signOut().catch(err=>console.error(err));
+    currentUser=null;
+    sessionStorage.removeItem('miamiSession');
+    saleCart=[];
+    applyAccess();
+  }
+  
   function isAdmin(){return currentUser?.role==='admin'}
   function requireAdmin(action){if(!isAdmin()){alert('Tu usuario de empleado no tiene permiso para '+action+'.');return false}return true}
-  
-  function changeCredentials(){
-    if(!requireAdmin('cambiar las claves'))return;
-    const users=getUsers();
-    for(const [username,label] of [['admin','administrador'],['empleado','empleado']]){
-      const next=prompt('Nueva contraseña para '+label+' (mínimo 8 caracteres). Deja vacío para conservarla:');
-      if(next===null)return;
-      if(next&&next.length<8)return alert('La contraseña debe tener al menos 8 caracteres.');
-      if(next)users[username].password=next;
-    }
-    localStorage.setItem('miamiUsers',JSON.stringify(users));
-    alert('Claves actualizadas en este navegador.');
-  }
 
   try{const saved=sessionStorage.getItem('miamiSession');if(saved)currentUser=JSON.parse(saved)}catch(e){currentUser=null}
 
@@ -457,9 +458,8 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
   function exportCSV(){
     if(!requireAdmin("exportar reportes"))return;
     let rows=[['Fecha','Tipo','Detalle','Valor'],...db.sales.map(x=>[x.date,'Venta',x.name,x.total]),...db.expenses.map(x=>[x.date,'Gasto',x.desc,-x.amount]),...db.payments.map(x=>[x.date,'Abono',x.account,x.amount])];
-    let csv=rows.map(r=>r.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(';')).join('
-'),a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));
+    let csv=rows.map(r=>r.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(';')).join('\n'),a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
     a.download='miami-cocktailss-movimientos.csv';a.click();
   }
 
