@@ -106,6 +106,7 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     </div>
    </div>
    <div class="card" style="margin-top:15px"><h2>Tickets abiertos</h2><div id="ticketsTable"></div></div>
+   <div class="card" style="margin-top:15px"><div class="sectionhead"><div><h2 style="margin-bottom:4px">Historial de tickets</h2><small class="role-note">Consulta tickets cobrados y cancelados, con su consumo y forma de pago.</small></div></div><div class="formrow"><input id="ticketHistorySearch" placeholder="Buscar por cliente o número de ticket..." oninput="renderTicketHistory()"><select id="ticketHistoryStatus" onchange="renderTicketHistory()"><option value="all">Todos los estados</option><option value="closed">Cerrados / cobrados</option><option value="cancelled">Cancelados</option></select></div><div id="ticketHistoryTable"></div></div>
    <div class="card" style="margin-top:15px" id="salesHistoryCard" data-admin-only><h2>Ventas registradas</h2><div id="salesTable"></div></div>
   </section>
   <section id="productos" class="page hidden">
@@ -368,6 +369,19 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     if(!confirm('¿Cancelar este ticket y devolver al inventario los productos consumidos?'))return;
     consumeItems(t.items,1);t.status='cancelled';save();
   }
+  function renderTicketHistory(){
+    const host=$('ticketHistoryTable');if(!host)return;
+    const term=($('ticketHistorySearch')?.value||'').trim().toLowerCase();
+    const status=$('ticketHistoryStatus')?.value||'all';
+    const rows=db.tickets.filter(t=>t.status!=='open'&&(status==='all'||t.status===status)&&(!term||String(t.id).includes(term)||(t.customer||'').toLowerCase().includes(term)||(t.items||[]).some(x=>(x.name||'').toLowerCase().includes(term))));
+    host.innerHTML=table(['Ticket','Fecha de apertura','Cliente','Consumo','Total','Estado','Pago / cierre','Detalle'],rows.map(t=>`<tr><td>#${t.id}</td><td>${t.date||'—'}</td><td>${t.customer||'Sin nombre'}</td><td>${(t.items||[]).map(x=>x.name+' × '+x.qty).join(', ')}</td><td>${money(ticketTotal(t))}</td><td><span class="pill" style="background:${t.status==='closed'?'#dff3e8':'#ffe0dc'}">${t.status==='closed'?'Cerrado':'Cancelado'}</span></td><td>${t.status==='closed'?(t.paymentMethod||'—')+' · '+(t.closedAt||''):'—'}</td><td><button class="outline" onclick="showTicketDetails(${t.id})">Ver</button></td></tr>`));
+  }
+  function showTicketDetails(id){
+    const t=db.tickets.find(x=>x.id===id);if(!t)return;
+    const lines=(t.items||[]).map(x=>`${x.name} × ${x.qty} — ${money(x.price*x.qty)}`).join('\n');
+    alert(`Ticket #${t.id}\nCliente: ${t.customer||'Sin nombre'}\nEstado: ${t.status==='closed'?'Cerrado / cobrado':t.status==='cancelled'?'Cancelado':'Abierto'}\nAbierto: ${t.date||'—'}\nCerrado: ${t.closedAt||'—'}\nMétodo de pago: ${t.paymentMethod||'—'}\nRegistrado por: ${t.createdBy||'—'}\n\nConsumo:\n${lines}\n\nTOTAL: ${money(ticketTotal(t))}`);
+  }
+
   function addSale(){
     if(!saleCart.length)return alert('Selecciona al menos un producto.');
     if(!canConsume(saleCart))return alert('No hay inventario suficiente para los componentes.');
@@ -549,6 +563,7 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     $('recent').innerHTML=[...db.sales.slice(0,3).map(x=>({t:'Venta · '+x.name,v:x.total})),...db.expenses.slice(0,2).map(x=>({t:'Gasto · '+x.desc,v:-x.amount}))].slice(0,5).map(x=>`<div class="activity"><span>${x.t}</span><b class="${x.v<0?'red':'green'}">${money(x.v)}</b></div>`).join('')||'<small>Sin movimientos todavía.</small>';
     if(isAdmin())$('salesTable').innerHTML=table(['Fecha','Producto','Cantidad','Total','Pago','Acciones'],db.sales.map(x=>`<tr><td>${x.date}</td><td>${x.name}</td><td>${x.qty}</td><td>${money(x.total)}</td><td>${x.method}</td><td><button class="soft" onclick="editSale(${x.id})">Editar</button> <button style="background:#ffe0dc" onclick="deleteSale(${x.id})">Eliminar</button></td></tr>`));
     $('ticketsTable').innerHTML=table(['Fecha','Cliente','Consumo','Total','Estado','Acciones'],db.tickets.filter(t=>t.status==='open').map(t=>`<tr><td>${t.date}</td><td>${t.customer||'Sin nombre'}</td><td>${(t.items||[]).map(x=>x.name+' x'+x.qty).join(', ')}</td><td>${money(ticketTotal(t))}</td><td><span class="pill">Abierto</span></td><td><button class="dark" onclick="closeTicket(${t.id})">Cerrar y cobrar</button> <button class="outline" onclick="cancelTicket(${t.id})">Cancelar</button></td></tr>`));
+    renderTicketHistory();
     refreshTicketSelect();
     refreshRecipeIngredientOptions();
     $('productsTable').innerHTML=table(['Imagen','Producto','Categoría','Precio','Costo','Existencias / receta'],db.products.map(x=>`<tr><td>${x.image?`<img src="${x.image}" style="width:48px;height:48px;object-fit:cover;border-radius:8px">`:'—'}</td><td>${x.name}</td><td>${x.category||'Otros'}</td><td>${money(x.price)}</td><td>${money(x.cost||0)}</td><td>${x.recipe?.length?'Compuesto: '+x.recipe.map(r=>(db.products.find(p=>p.id===r.productId)?.name||'Componente')+' × '+r.qty).join(', '):x.stock}</td></tr>`));
