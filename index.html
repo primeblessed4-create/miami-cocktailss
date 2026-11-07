@@ -118,6 +118,7 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
      <input id="prodPrice" type="number" min="1" placeholder="Precio de venta">
      <input id="prodCost" type="number" min="0" placeholder="Costo de compra (opcional)">
      <input id="prodStock" type="number" min="0" placeholder="Existencias iniciales">
+     <label class="wide"><input id="prodAvailable" type="checkbox" checked> Disponible para la venta</label>
      <label class="wide"><input id="prodComposite" type="checkbox" onchange="toggleRecipeUI()"> Producto compuesto (receta / ingredientes)</label>
      <div id="recipeEditor" class="wide hidden">
       <div class="formrow"><select id="recipeIngredient"></select><input id="recipeQty" type="number" min="0.001" step="0.001" placeholder="Cantidad por unidad"><button type="button" onclick="addRecipeIngredient()">Añadir componente</button></div>
@@ -168,6 +169,19 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <!-- Conexión y Lógica MIAMI COCKTAILSS -->
+<div id="ticketPaymentModal" class="login-screen hidden" style="z-index:30">
+ <div class="login-card">
+  <h2>Cerrar y cobrar ticket</h2>
+  <p class="sub" id="ticketPaymentTotal"></p>
+  <label for="ticketPaymentMethod">Forma de pago</label>
+  <select id="ticketPaymentMethod" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;margin:8px 0 14px;background:white">
+   <option value="Efectivo">💵 Efectivo</option><option value="Transferencia">📲 Transferencia</option><option value="Tarjeta">💳 Tarjeta</option><option value="Crédito / fiado">🧾 Crédito / fiado</option><option value="Pago mixto">🔀 Pago mixto</option>
+  </select>
+  <label for="ticketPaymentCustomer">Cliente (opcional)</label>
+  <input id="ticketPaymentCustomer" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;margin:8px 0 14px" placeholder="Nombre del cliente">
+  <div class="actions"><button class="dark" onclick="confirmCloseTicket()">Confirmar cobro</button><button class="outline" onclick="cancelCloseTicket()">Volver</button></div>
+ </div>
+</div>
 <script>
   const miamiFirebaseConfig = {
     apiKey: "AIzaSyBmoUTKDxADmiNTO4-8UB069N6tXLT_VsQ",
@@ -326,7 +340,7 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
   }
   function renderSaleCatalog(){
     const q=($('saleSearch')?.value||'').trim().toLowerCase(),cat=$('saleCategory')?.value||'';
-    $('saleProductGrid').innerHTML=db.products.filter(p=>(!q||p.name.toLowerCase().includes(q))&&(!cat||p.category===cat)&&(!p.recipe?.length?p.stock>0:true)).map(p=>`<button class="product-tile" onclick="addToCart(${p.id})">${p.image?`<img src="${p.image}" alt="">`:'<div class="placeholder">🥤</div>'}<b>${p.name}</b><small>${money(p.price)} · ${p.recipe?.length?'Preparación':p.stock+' disponibles'}</small></button>`).join('')||'<p style="color:#888">No hay productos disponibles en esta categoría.</p>';
+    $('saleProductGrid').innerHTML=db.products.filter(p=>p.available!==false&&(!q||p.name.toLowerCase().includes(q))&&(!cat||p.category===cat)&&(!p.recipe?.length?p.stock>0:true)).map(p=>`<button class="product-tile" onclick="addToCart(${p.id})">${p.image?`<img src="${p.image}" alt="">`:'<div class="placeholder">🥤</div>'}<b>${p.name}</b><small>${money(p.price)} · ${p.recipe?.length?'Preparación':p.stock+' disponibles'}</small></button>`).join('')||'<p style="color:#888">No hay productos disponibles en esta categoría.</p>';
   }
   function renderSaleCart(){
     $('saleCart').innerHTML=saleCart.length?saleCart.map(x=>`<div class="cart-line"><div><b>${x.name}</b><br><small>${money(x.price)} c/u</small></div><div class="qty-controls"><button class="soft" onclick="changeCartQty(${x.productId},-1)">−</button><b>${x.qty}</b><button class="soft" onclick="changeCartQty(${x.productId},1)">+</button></div></div>`).join(''):'<p style="color:#888">Selecciona una imagen para agregar productos.</p>';
@@ -354,15 +368,28 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     const items=cartSnapshot();consumeItems(items,-1);
     t.items.push(...items);saleCart=[];save();
   }
+  let pendingCloseTicketId=null;
   function closeTicket(id){
     const t=db.tickets.find(x=>x.id===id&&x.status==='open');if(!t)return;
-    const method=prompt('Método de pago: Efectivo, Transferencia, Tarjeta, Crédito / fiado o Pago mixto','Efectivo');if(method===null)return;
-    const customer=t.customer||prompt('Nombre del cliente (opcional):','')||'';
+    pendingCloseTicketId=id;
+    $('ticketPaymentTotal').textContent='Total a cobrar: '+money(ticketTotal(t));
+    $('ticketPaymentCustomer').value=t.customer||'';
+    $('ticketPaymentMethod').value='Efectivo';
+    $('ticketPaymentModal').classList.remove('hidden');
+  }
+  function cancelCloseTicket(){
+    pendingCloseTicketId=null;
+    $('ticketPaymentModal').classList.add('hidden');
+  }
+  function confirmCloseTicket(){
+    const id=pendingCloseTicketId,t=db.tickets.find(x=>x.id===id&&x.status==='open');if(!t)return cancelCloseTicket();
+    const method=$('ticketPaymentMethod').value,customer=$('ticketPaymentCustomer').value.trim();
     const total=ticketTotal(t),saleId=Date.now();
     db.sales.unshift({id:saleId,date:today(),name:t.items.map(x=>x.name+' x'+x.qty).join(', '),items:t.items.map(x=>({...x})),qty:t.items.reduce((a,x)=>a+x.qty,0),price:0,total,method,customer,ticketId:t.id});
     if(method.includes('Crédito'))db.accounts.unshift({id:saleId+1,type:'receivable',name:customer||'Cliente sin identificar',desc:'Venta: '+t.items.map(x=>x.name+' x'+x.qty).join(', '),total,paid:0,due:'',created:today(),saleId});
-    else if(method!=='Pago mixto')db.cash.push({id:Date.now()+2,saleId,date:today(),type:'in',desc:'Venta: '+t.items.map(x=>x.name).join(', '),amount:total});
-    t.status='closed';t.closedAt=today();t.paymentMethod=method;save();
+    else if(method!=='Pago mixto')db.cash.push({id:saleId+2,saleId,date:today(),type:'in',desc:'Venta: '+t.items.map(x=>x.name).join(', '),amount:total});
+    t.status='closed';t.closedAt=today();t.paymentMethod=method;t.customer=customer||t.customer||'';
+    cancelCloseTicket();save();
   }
   function cancelTicket(id){
     const t=db.tickets.find(x=>x.id===id&&x.status==='open');if(!t)return;
@@ -451,11 +478,27 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
       const image=await compressProductImage(file);
       const recipe=$('prodComposite').checked?recipeDraft.map(x=>({...x})):[];
       if($('prodComposite').checked&&!recipe.length)return alert('Agrega al menos un componente para la receta.');
-      db.products.push({id:Date.now(),name,price,cost,stock:recipe.length?999999:Math.max(0,stock),category,image,recipe});
+      db.products.push({id:Date.now(),name,price,cost,stock:recipe.length?999999:Math.max(0,stock),category,image,recipe,available:$('prodAvailable').checked});
       recipeDraft=[];$('prodComposite').checked=false;$('recipeEditor').classList.add('hidden');renderRecipeList();
-      $('prodName').value='';$('prodPrice').value='';$('prodCost').value='';$('prodStock').value='';$('prodImage').value='';
+      $('prodName').value='';$('prodAvailable').checked=true;$('prodPrice').value='';$('prodCost').value='';$('prodStock').value='';$('prodImage').value='';
       save();
     }catch(e){alert('No se pudo cargar la imagen: '+e.message)}
+  }
+
+  function toggleProductAvailability(id){
+    if(!requireAdmin('cambiar disponibilidad de productos'))return;
+    const p=db.products.find(x=>x.id===id);if(!p)return;
+    p.available=p.available===false;
+    save();
+  }
+  function deleteProduct(id){
+    if(!requireAdmin('eliminar productos'))return;
+    const p=db.products.find(x=>x.id===id);if(!p)return;
+    if(db.products.some(x=>(x.recipe||[]).some(r=>r.productId===id)))return alert('No se puede eliminar: este producto se utiliza como ingrediente en otra receta. Primero edita esas recetas.');
+    if(db.tickets.some(t=>t.status==='open'&&(t.items||[]).some(x=>x.productId===id)))return alert('No se puede eliminar: el producto aparece en un ticket abierto.');
+    if(!confirm('¿Eliminar definitivamente "'+p.name+'" del catálogo? Los registros históricos de ventas se conservarán.'))return;
+    db.products=db.products.filter(x=>x.id!==id);
+    save();
   }
 
   function adjustStock(){
@@ -566,7 +609,7 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     renderTicketHistory();
     refreshTicketSelect();
     refreshRecipeIngredientOptions();
-    $('productsTable').innerHTML=table(['Imagen','Producto','Categoría','Precio','Costo','Existencias / receta'],db.products.map(x=>`<tr><td>${x.image?`<img src="${x.image}" style="width:48px;height:48px;object-fit:cover;border-radius:8px">`:'—'}</td><td>${x.name}</td><td>${x.category||'Otros'}</td><td>${money(x.price)}</td><td>${money(x.cost||0)}</td><td>${x.recipe?.length?'Compuesto: '+x.recipe.map(r=>(db.products.find(p=>p.id===r.productId)?.name||'Componente')+' × '+r.qty).join(', '):x.stock}</td></tr>`));
+    $('productsTable').innerHTML=table(['Imagen','Producto','Categoría','Precio','Costo','Existencias / receta','Venta','Acciones'],db.products.map(x=>`<tr><td>${x.image?`<img src="${x.image}" style="width:48px;height:48px;object-fit:cover;border-radius:8px">`:'—'}</td><td>${x.name}</td><td>${x.category||'Otros'}</td><td>${money(x.price)}</td><td>${money(x.cost||0)}</td><td>${x.recipe?.length?'Compuesto: '+x.recipe.map(r=>(db.products.find(p=>p.id===r.productId)?.name||'Componente')+' × '+r.qty).join(', '):x.stock}</td><td><span class="pill" style="background:${x.available===false?'#ffe0dc':'#dff3e8'}">${x.available===false?'No disponible':'Disponible'}</span></td><td><button class="soft" onclick="toggleProductAvailability(${x.id})">${x.available===false?'Activar':'Desactivar'}</button> <button style="background:#ffe0dc" onclick="deleteProduct(${x.id})">Eliminar</button></td></tr>`));
     $('stockProduct').innerHTML=db.products.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');$('stockTable').innerHTML=table(['Producto','Existencias','Precio'],db.products.map(x=>`<tr><td>${x.name}</td><td>${x.stock}</td><td>${money(x.price)}</td></tr>`));
     let cash=db.cash.reduce((s,x)=>s+(x.type==='in'?x.amount:-x.amount),0);$('cashBalance').textContent=money(cash);$('cashStatus').textContent=db.cashOpen?'Abierta':'Cerrada';$('cashTable').innerHTML=table(['Fecha','Concepto','Tipo','Valor'],db.cash.map(x=>`<tr><td>${x.date}</td><td>${x.desc}</td><td>${x.type==='in'?'Entrada':'Salida'}</td><td class="${x.type==='in'?'green':'red'}">${money(x.amount)}</td></tr>`));
     $('accReceivable').textContent=money(rec);$('accPayable').textContent=money(pay);$('accPaidIn').textContent=money(db.payments.filter(x=>x.type==='receivable').reduce((s,x)=>s+x.amount,0));$('accPaidOut').textContent=money(db.payments.filter(x=>x.type==='payable').reduce((s,x)=>s+x.amount,0));
