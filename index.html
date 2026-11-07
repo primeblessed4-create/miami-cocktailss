@@ -42,79 +42,6 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
 .mobilemenu{display:none}
 @media(max-width:850px){.side{width:205px}.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.content{padding:18px}.top{padding:0 18px}}
 @media(max-width:620px){.app{display:block}.side{width:auto;padding:10px;border:0;border-bottom:1px solid var(--line)}.brand{padding:2px 5px 8px;border:0}.brand img{width:42px;height:42px}.nav{display:flex;overflow:auto;gap:3px}.nav button{white-space:nowrap;padding:9px}.nav button span{width:auto;margin-right:5px}.sidefoot{display:none}.top{height:55px}.content{padding:16px 12px}.grid{gap:8px}.metric{padding:12px}.metric strong{font-size:20px}.quick{grid-template-columns:1fr 1fr}table{font-size:12px}th,td{padding:9px}.sectionhead{align-items:flex-start;flex-direction:column}}
-
-html[data-theme='dark'] {
-  --yellow: #ffd700;
-  --peach: #ff9b5a;
-  --orange: #ff7518;
-  --ink: #f0f0f0;
-  --muted: #a0a0a0;
-  --line: #444;
-  --bg: #121212;
-  --green: #4ade80;
-  --red: #f87171;
-}
-html[data-theme='dark'] .side,
-html[data-theme='dark'] .top,
-html[data-theme='dark'] .card,
-html[data-theme='dark'] .login-card,
-html[data-theme='dark'] .product-tile,
-html[data-theme='dark'] .nav button.active,
-html[data-theme='dark'] .nav button:hover,
-html[data-theme='dark'] input,
-html[data-theme='dark'] select,
-html[data-theme='dark'] table {
-  background: #1e1e1e;
-  color: var(--ink);
-  border-color: var(--line);
-}
-html[data-theme='dark'] th {
-  background: #2a2a2a;
-}
-html[data-theme='dark'] .nav button {
-  color: #ccc;
-}
-html[data-theme='dark'] .sidefoot,
-html[data-theme='dark'] .notice {
-  background: #2c2a20;
-  color: #d4c89d;
-  border-color: #4a452e;
-}
-html[data-theme='dark'] .metric .ico,
-html[data-theme='dark'] .soft,
-html[data-theme='dark'] .pill {
-  background: #3a3826;
-  color: var(--ink);
-}
-html[data-theme='dark'] .activity {
-  border-color: #333;
-}
-html[data-theme='dark'] tr:not(:last-child) td,
-html[data-theme='dark'] .cart-line {
-  border-color: #333;
-}
-html[data-theme='dark'] .login-screen {
-  background: linear-gradient(135deg, #1e1e1e, #121212);
-}
-html[data-theme='dark'] .dark {
-  background: #f0f0f0;
-  color: #121212;
-}
-html[data-theme='dark'] .quick button {
-  background: #2c2a20;
-  border-color: #4a452e;
-}
-html[data-theme='dark'] .photo-label {
-  background: #2a2a2a;
-  border-color: #555;
-}
-html[data-theme='dark'] .product-tile img {
-  background: #333;
-}
-html[data-theme='dark'] .product-tile .placeholder {
-  background: #2c2a20;
-}
-
 </style></head>
 <body>
 <div id="loginScreen" class="login-screen">
@@ -142,7 +69,7 @@ html[data-theme='dark'] .product-tile .placeholder {
  <div class="sidefoot"><b>¡A vender con toda!</b><br>Controla tu negocio, tus cuentas y cada movimiento desde un solo lugar.</div>
 </aside>
 <main class="main">
- <header class="top"><div><b id="pageTitle">Dashboard</b><br><small id="today"></small></div><div class="user-tools"><button class="outline" onclick="toggleTheme()" id="themeBtn" style="padding:8px 10px; margin-right:8px; font-size:16px;">🌙</button><span id="activeUser" class="pill">●</span><button class="outline" onclick="logout()">Salir</button></div></header>
+ <header class="top"><div><b id="pageTitle">Dashboard</b><br><small id="today"></small></div><div class="user-tools"><span id="activeUser" class="pill">●</span><button class="outline" onclick="logout()">Salir</button></div></header>
  <div class="content">
   <section id="inicio" class="page">
    <h1>¡Hola! 👋</h1><div class="sub">Este es el resumen de tu negocio.</div>
@@ -243,24 +170,6 @@ html[data-theme='dark'] .product-tile .placeholder {
 
 <!-- Conexión y Lógica MIAMI COCKTAILSS -->
 <script>
-  
-  // Theme Toggle Logic
-  function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('miamiTheme', theme);
-    const btn = $('themeBtn');
-    if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
-  }
-  
-  function toggleTheme() {
-    const current = document.documentElement.getAttribute('data-theme');
-    applyTheme(current === 'dark' ? 'light' : 'dark');
-  }
-
-  // Initialize Theme
-  const savedTheme = localStorage.getItem('miamiTheme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  applyTheme(savedTheme);
-
   const miamiFirebaseConfig = {
     apiKey: "AIzaSyBmoUTKDxADmiNTO4-8UB069N6tXLT_VsQ",
     authDomain: "miami-cocktailss.firebaseapp.com",
