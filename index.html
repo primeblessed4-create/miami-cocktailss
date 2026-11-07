@@ -42,6 +42,44 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
 .mobilemenu{display:none}
 @media(max-width:850px){.side{width:205px}.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.content{padding:18px}.top{padding:0 18px}}
 @media(max-width:620px){.app{display:block}.side{width:auto;padding:10px;border:0;border-bottom:1px solid var(--line)}.brand{padding:2px 5px 8px;border:0}.brand img{width:42px;height:42px}.nav{display:flex;overflow:auto;gap:3px}.nav button{white-space:nowrap;padding:9px}.nav button span{width:auto;margin-right:5px}.sidefoot{display:none}.top{height:55px}.content{padding:16px 12px}.grid{gap:8px}.metric{padding:12px}.metric strong{font-size:20px}.quick{grid-template-columns:1fr 1fr}table{font-size:12px}th,td{padding:9px}.sectionhead{align-items:flex-start;flex-direction:column}}
+
+/* Modo Oscuro */
+body.dark-mode {
+  --bg: #121212;
+  --ink: #e0e0e0;
+  --line: #333333;
+  --muted: #999999;
+  background: var(--bg);
+  color: var(--ink);
+}
+body.dark-mode .side,
+body.dark-mode .top,
+body.dark-mode .card,
+body.dark-mode table,
+body.dark-mode .login-card,
+body.dark-mode .product-tile,
+body.dark-mode input,
+body.dark-mode select {
+  background: #1e1e1e !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+body.dark-mode th { background: #2c2c2c !important; }
+body.dark-mode .soft { background: #333 !important; color: #fff !important; }
+body.dark-mode .outline { background: transparent !important; color: var(--ink) !important; }
+body.dark-mode .notice, 
+body.dark-mode .sidefoot { background: #2a2a1a !important; border-color: #444 !important; color: #ccc !important; }
+body.dark-mode .nav button.active, 
+body.dark-mode .nav button:hover { background: #333 !important; color: #fff !important; }
+body.dark-mode .nav button { color: #aaa; }
+body.dark-mode .bar { background: #333 !important; }
+body.dark-mode .activity, 
+body.dark-mode .cart-line, 
+body.dark-mode th, 
+body.dark-mode td { border-color: var(--line) !important; }
+body.dark-mode .metric .ico { background: #333 !important; }
+body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
+
 </style></head>
 <body>
 <div id="loginScreen" class="login-screen">
@@ -69,7 +107,14 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
  <div class="sidefoot"><b>¡A vender con toda!</b><br>Controla tu negocio, tus cuentas y cada movimiento desde un solo lugar.</div>
 </aside>
 <main class="main">
- <header class="top"><div><b id="pageTitle">Dashboard</b><br><small id="today"></small></div><div class="user-tools"><span id="activeUser" class="pill">●</span><button class="outline" onclick="logout()">Salir</button></div></header>
+ <header class="top">
+  <div><b id="pageTitle">Dashboard</b><br><small id="today"></small></div>
+  <div class="user-tools">
+    <span id="activeUser" class="pill">●</span>
+    <button id="btnDarkMode" class="soft" onclick="toggleDarkMode()">🌙 Oscuro</button>
+    <button class="outline" onclick="logout()">Salir</button>
+  </div>
+</header>
  <div class="content">
   <section id="inicio" class="page">
    <h1>¡Hola! 👋</h1><div class="sub">Este es el resumen de tu negocio.</div>
@@ -729,4 +774,24 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
   
   initFirestoreSync();
   applyAccess();
-</script></body></html>
+</script><script>
+
+// Lógica para el Modo Oscuro
+function toggleDarkMode() {
+  const isDark = document.body.classList.toggle('dark-mode');
+  localStorage.setItem('miamiDarkMode', isDark);
+  const btn = document.getElementById('btnDarkMode');
+  if(btn) btn.textContent = isDark ? '☀️ Claro' : '🌙 Oscuro';
+}
+
+// Aplicar el modo oscuro guardado al cargar la página
+if (localStorage.getItem('miamiDarkMode') === 'true') {
+  document.body.classList.add('dark-mode');
+  window.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btnDarkMode');
+    if(btn) btn.textContent = '☀️ Claro';
+  });
+}
+
+</script>
+</body></html>
