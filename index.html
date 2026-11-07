@@ -256,6 +256,8 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
           tickets: data.tickets || [],
           cashOpen: !!data.cashOpen
         };
+        db.expenses.forEach(x => { if(!x.id) x.id = Date.now() + Math.random(); });
+        db.cash.forEach(x => { if(!x.id) x.id = Date.now() + Math.random(); });
         render();
       } else {
         saveToCloud();
@@ -393,8 +395,16 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
   function deleteTicket(id){
     if(!requireAdmin('eliminar tickets'))return;
     if(!confirm('¿Eliminar este ticket definitivamente del historial?'))return;
-    db.tickets=db.tickets.filter(x=>x.id!==id);
-    save();
+    try {
+        const initialLen = db.tickets.length;
+        db.tickets = db.tickets.filter(x => String(x.id) !== String(id));
+        save();
+        if (db.tickets.length === initialLen) {
+            alert("Error: No se encontró el ticket en el sistema.");
+        }
+    } catch(e) {
+        alert("Error al borrar: " + e.message);
+    }
   }
   
   function showTicketDetails(id){
@@ -601,8 +611,9 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     let id=+$('payAccount').value,amount=+$('payAmount').value,a=db.accounts.find(x=>x.id===id);
     if(!a||amount<=0)return alert('Selecciona una cuenta e indica el abono.');
     let balance=a.total-a.paid;if(amount>balance)return alert('El abono no puede superar el saldo pendiente.');
-    a.paid+=amount;db.payments.unshift({date:today(),account:a.name,type:a.type,amount,note:$('payNote').value});
-    db.cash.push({date:today(),type:a.type==='receivable'?'in':'out',desc:'Abono '+a.name,amount});
+    const payId = Date.now();
+    a.paid+=amount;db.payments.unshift({id: payId, date:today(),account:a.name,type:a.type,amount,note:$('payNote').value});
+    db.cash.push({id: payId + 1, paymentId: payId, date:today(),type:a.type==='receivable'?'in':'out',desc:'Abono '+a.name,amount});
     $('payAmount').value='';$('payNote').value='';save();
   }
 
@@ -610,8 +621,9 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     if(!requireAdmin("registrar gastos"))return;
     let desc=$('expenseDesc').value.trim(),amount=+$('expenseAmount').value;
     if(!desc||amount<=0)return alert('Completa concepto y valor.');
-    db.expenses.unshift({date:today(),desc,cat:$('expenseCat').value,amount,method:$('expenseMethod').value});
-    db.cash.push({date:today(),type:'out',desc:'Gasto: '+desc,amount});
+    const expId = Date.now();
+    db.expenses.unshift({id: expId, date:today(),desc,cat:$('expenseCat').value,amount,method:$('expenseMethod').value});
+    db.cash.push({id: expId + 1, expenseId: expId, date:today(),type:'out',desc:'Gasto: '+desc,amount});
     $('expenseDesc').value='';$('expenseAmount').value='';save();
   }
 
@@ -619,7 +631,7 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     if(!requireAdmin("registrar movimientos de caja"))return;
     let desc=$('cashDesc').value.trim(),amount=+$('cashAmount').value;
     if(!desc||amount<=0)return alert('Completa concepto y valor.');
-    db.cash.unshift({date:today(),type:$('cashType').value,desc,amount});
+    db.cash.unshift({id: Date.now(), date:today(),type:$('cashType').value,desc,amount});
     $('cashDesc').value='';$('cashAmount').value='';save();
   }
 
@@ -627,6 +639,46 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     if(!requireAdmin("abrir o cerrar caja"))return;
     db.cashOpen=!db.cashOpen;save();
   }
+  function editExpense(id) {
+    if(!requireAdmin("editar gastos")) return;
+    const exp = db.expenses.find(x => x.id === id); if(!exp) return;
+    const desc = prompt("Modificar concepto:", exp.desc); if(desc === null) return;
+    const amount = Number(prompt("Modificar valor:", exp.amount)); if(!amount || amount <= 0) return alert("Valor inválido.");
+    exp.desc = desc.trim();
+    exp.amount = amount;
+    const cash = db.cash.find(x => x.expenseId === id);
+    if(cash) { cash.desc = 'Gasto: ' + exp.desc; cash.amount = amount; }
+    save();
+  }
+
+  function deleteExpense(id) {
+    if(!requireAdmin("eliminar gastos")) return;
+    if(!confirm("¿Eliminar este gasto?")) return;
+    db.expenses = db.expenses.filter(x => x.id !== id);
+    db.cash = db.cash.filter(x => x.expenseId !== id);
+    save();
+  }
+
+  function editCash(id) {
+    if(!requireAdmin("editar movimientos de caja")) return;
+    const cash = db.cash.find(x => x.id === id); if(!cash) return;
+    if(cash.saleId || cash.expenseId || cash.paymentId) return alert("Este movimiento está vinculado a una venta, gasto o abono. Edítalo desde su respectiva sección.");
+    const desc = prompt("Modificar concepto:", cash.desc); if(desc === null) return;
+    const amount = Number(prompt("Modificar valor:", cash.amount)); if(!amount || amount <= 0) return alert("Valor inválido.");
+    cash.desc = desc.trim();
+    cash.amount = amount;
+    save();
+  }
+
+  function deleteCash(id) {
+    if(!requireAdmin("eliminar movimientos de caja")) return;
+    const cash = db.cash.find(x => x.id === id); if(!cash) return;
+    if(cash.saleId || cash.expenseId || cash.paymentId) return alert("Este movimiento está vinculado a una venta, gasto o abono. Elimínalo desde su respectiva sección.");
+    if(!confirm("¿Eliminar este movimiento de caja?")) return;
+    db.cash = db.cash.filter(x => x.id !== id);
+    save();
+  }
+
 
   function table(headers,rows){
     if(!rows.length)return '<p style="color:#888;padding:12px">Todavía no hay registros.</p>';
@@ -645,11 +697,11 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     refreshRecipeIngredientOptions();
     $('productsTable').innerHTML=table(['Imagen','Producto','Categoría','Precio','Costo','Existencias / receta','Acciones'],db.products.map(x=>`<tr><td>${x.image?`<img src="${x.image}" style="width:48px;height:48px;object-fit:cover;border-radius:8px">`:'—'}</td><td>${x.name}${x.forSale===false?' <br><span class="pill red" style="font-size:9px">Oculto en POS</span>':''}</td><td>${x.category||'Otros'}</td><td>${money(x.price)}</td><td>${money(x.cost||0)}</td><td>${x.recipe?.length?'Compuesto: '+x.recipe.map(r=>(db.products.find(p=>p.id===r.productId)?.name||'Componente')+' × '+r.qty).join(', '):x.stock}</td><td><button class="soft" onclick="editProduct(${x.id})">Editar</button> <button style="background:#ffe0dc" onclick="deleteProduct(${x.id})">Borrar</button></td></tr>`));
     $('stockProduct').innerHTML=db.products.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');$('stockTable').innerHTML=table(['Producto','Existencias','Precio'],db.products.map(x=>`<tr><td>${x.name}</td><td>${x.stock}</td><td>${money(x.price)}</td></tr>`));
-    let cash=db.cash.reduce((s,x)=>s+(x.type==='in'?x.amount:-x.amount),0);$('cashBalance').textContent=money(cash);$('cashStatus').textContent=db.cashOpen?'Abierta':'Cerrada';$('cashTable').innerHTML=table(['Fecha','Concepto','Tipo','Valor'],db.cash.map(x=>`<tr><td>${x.date}</td><td>${x.desc}</td><td>${x.type==='in'?'Entrada':'Salida'}</td><td class="${x.type==='in'?'green':'red'}">${money(x.amount)}</td></tr>`));
+    let cash=db.cash.reduce((s,x)=>s+(x.type==='in'?x.amount:-x.amount),0);$('cashBalance').textContent=money(cash);$('cashStatus').textContent=db.cashOpen?'Abierta':'Cerrada';$('cashTable').innerHTML=table(['Fecha','Concepto','Tipo','Valor','Acciones'],db.cash.map(x=>`<tr><td>${x.date}</td><td>${x.desc}</td><td>${x.type==='in'?'Entrada':'Salida'}</td><td class="${x.type==='in'?'green':'red'}">${money(x.amount)}</td><td style="white-space:nowrap">${isAdmin()?`<button class="soft" onclick="editCash(${x.id})">Editar</button> <button style="background:#ffe0dc" onclick="deleteCash(${x.id})">Borrar</button>`:'—'}</td></tr>`));
     $('accReceivable').textContent=money(rec);$('accPayable').textContent=money(pay);$('accPaidIn').textContent=money(db.payments.filter(x=>x.type==='receivable').reduce((s,x)=>s+x.amount,0));$('accPaidOut').textContent=money(db.payments.filter(x=>x.type==='payable').reduce((s,x)=>s+x.amount,0));
     $('accountsTable').innerHTML=table(['Tipo','Tercero','Concepto','Total','Abonado','Saldo','Vence','Estado','Acciones'],db.accounts.map(a=>{let bal=a.total-a.paid,over=a.due&&new Date(a.due+'T23:59:59')<new Date()&&bal>0;return `<tr><td>${a.type==='receivable'?'Por cobrar':'Por pagar'}</td><td>${a.name}</td><td>${a.desc||'—'}</td><td>${money(a.total)}</td><td>${money(a.paid)}</td><td><b>${money(bal)}</b></td><td>${a.due||'—'}</td><td><span class="pill" style="background:${bal===0?'#dff3e8':over?'#ffe0dc':'#fff3b0'}">${bal===0?'Pagada':over?'Vencida':a.paid?'Abonada':'Pendiente'}</span></td><td><button class="soft" onclick="editAccount(${a.id})">Editar</button> <button style="background:#ffe0dc" onclick="deleteAccount(${a.id})">Borrar</button></td></tr>`}));
     $('payAccount').innerHTML=db.accounts.filter(a=>a.total>a.paid).map(a=>`<option value="${a.id}">${a.name} · ${money(a.total-a.paid)}</option>`).join('');$('paymentsTable').innerHTML=table(['Fecha','Tercero','Tipo','Abono','Nota'],db.payments.map(x=>`<tr><td>${x.date}</td><td>${x.account}</td><td>${x.type==='receivable'?'Recibido':'Realizado'}</td><td>${money(x.amount)}</td><td>${x.note||'—'}</td></tr>`));
-    $('expensesTable').innerHTML=table(['Fecha','Concepto','Categoría','Método','Valor'],db.expenses.map(x=>`<tr><td>${x.date}</td><td>${x.desc}</td><td>${x.cat}</td><td>${x.method}</td><td>${money(x.amount)}</td></tr>`));
+    $('expensesTable').innerHTML=table(['Fecha','Concepto','Categoría','Método','Valor','Acciones'],db.expenses.map(x=>`<tr><td>${x.date}</td><td>${x.desc}</td><td>${x.cat}</td><td>${x.method}</td><td>${money(x.amount)}</td><td style="white-space:nowrap">${isAdmin()?`<button class="soft" onclick="editExpense(${x.id})">Editar</button> <button style="background:#ffe0dc" onclick="deleteExpense(${x.id})">Borrar</button>`:'—'}</td></tr>`));
     $('rSales').textContent=money(sales);$('rExpenses').textContent=money(expenses);$('rCredit').textContent=money(db.sales.filter(x=>x.method.includes('Crédito')).reduce((s,x)=>s+x.total,0));$('rNet').textContent=money(sales-expenses);
     const categories=[...new Set(db.products.map(p=>p.category||'Otros'))],categorySelect=$('saleCategory'),selectedCategory=categorySelect.value;
     categorySelect.innerHTML='<option value="">Todas las categorías</option>'+categories.map(c=>`<option value="${c}">${c}</option>`).join('');
