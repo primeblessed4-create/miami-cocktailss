@@ -106,7 +106,7 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     </div>
    </div>
    <div class="card" style="margin-top:15px"><h2>Tickets abiertos</h2><div id="ticketsTable"></div></div>
-   <div class="card" style="margin-top:15px"><div class="sectionhead"><div><h2 style="margin-bottom:4px">Historial de tickets</h2><small class="role-note">Consulta tickets cobrados y cancelados, con su consumo y forma de pago.</small></div></div><div class="formrow"><input id="ticketHistorySearch" placeholder="Buscar por cliente o número de ticket..." oninput="renderTicketHistory()"><select id="ticketHistoryStatus" onchange="renderTicketHistory()"><option value="all">Todos los estados</option><option value="closed">Cerrados / cobrados</option><option value="cancelled">Cancelados</option></select></div><div id="ticketHistoryTable"></div></div>
+   <div class="card" style="margin-top:15px"><div class="sectionhead"><div><h2 style="margin-bottom:4px">Historial de tickets</h2><small class="role-note">Consulta tickets cobrados y cancelados, con su consumo y forma de pago.</small></div><button class="outline" style="color:var(--red);border-color:var(--red)" onclick="clearTicketHistory()" data-admin-only>Vaciar historial</button></div><div class="formrow"><input id="ticketHistorySearch" placeholder="Buscar por cliente o número de ticket..." oninput="renderTicketHistory()"><select id="ticketHistoryStatus" onchange="renderTicketHistory()"><option value="all">Todos los estados</option><option value="closed">Cerrados / cobrados</option><option value="cancelled">Cancelados</option></select></div><div id="ticketHistoryTable"></div></div>
    <div class="card" style="margin-top:15px" id="salesHistoryCard"><h2>Ventas registradas</h2><div id="salesTable"></div></div>
   </section>
   <section id="productos" class="page hidden">
@@ -377,6 +377,26 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     const rows=db.tickets.filter(t=>t.status!=='open'&&(status==='all'||t.status===status)&&(!term||String(t.id).includes(term)||(t.customer||'').toLowerCase().includes(term)||(t.items||[]).some(x=>(x.name||'').toLowerCase().includes(term))));
     host.innerHTML=table(['Ticket','Fecha de apertura','Cliente','Consumo','Total','Estado','Pago / cierre','Acciones'],rows.map(t=>`<tr><td>#${t.id}</td><td>${t.date||'—'}</td><td>${t.customer||'Sin nombre'}</td><td>${(t.items||[]).map(x=>x.name+' × '+x.qty).join(', ')}</td><td>${money(ticketTotal(t))}</td><td><span class="pill" style="background:${t.status==='closed'?'#dff3e8':'#ffe0dc'}">${t.status==='closed'?'Cerrado':'Cancelado'}</span></td><td>${t.status==='closed'?(t.paymentMethod||'—')+' · '+(t.closedAt||''):'—'}</td><td style="white-space:nowrap"><button class="outline" onclick="showTicketDetails(${t.id})">Ver</button>${isAdmin()?` <button class="soft" onclick="editTicket(${t.id})">Editar</button> <button style="background:#ffe0dc" onclick="deleteTicket(${t.id})">Borrar</button>`:''}</td></tr>`));
   }
+  
+  function clearTicketHistory(){
+    if(!requireAdmin('vaciar el historial de tickets'))return;
+    if(!confirm('¿Estás seguro de ELIMINAR TODOS los tickets cerrados y cancelados del historial? Esta acción no se puede deshacer.'))return;
+    db.tickets = db.tickets.filter(t => t.status === 'open');
+    save();
+  }
+  function editTicket(id){
+    if(!requireAdmin('editar tickets'))return;
+    const t=db.tickets.find(x=>x.id===id);if(!t)return;
+    const customer=prompt('Modificar cliente del ticket:', t.customer||'');
+    if(customer!==null){ t.customer=customer.trim(); save(); }
+  }
+  function deleteTicket(id){
+    if(!requireAdmin('eliminar tickets'))return;
+    if(!confirm('¿Eliminar este ticket definitivamente del historial?'))return;
+    db.tickets=db.tickets.filter(x=>x.id!==id);
+    save();
+  }
+  
   function showTicketDetails(id){
     const t=db.tickets.find(x=>x.id===id);if(!t)return;
     const lines=(t.items||[]).map(x=>`${x.name} × ${x.qty} — ${money(x.price*x.qty)}`).join('\n');
