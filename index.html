@@ -306,7 +306,8 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
         db.cash.forEach(x => { if(!x.id) x.id = Date.now() + Math.random(); });
         render();
       } else {
-        saveToCloud();
+        console.warn("El documento no existe todavía o hubo un fallo de lectura, protegiendo datos...");
+        // Eliminamos el saveToCloud() automático aquí para que NUNCA vuelva a borrar tus cosas.
       }
     }, err => {
       console.error("Error al sincronizar con Firestore:", err);
