@@ -124,7 +124,7 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
       <div id="recipeList" class="notice">Agrega los componentes que consume cada unidad del producto.</div>
      </div>
      <label class="photo-label wide">📷 Imagen del producto <input id="prodImage" type="file" accept="image/*"></label>
-     <button class="wide" onclick="addProduct()">Guardar producto</button>
+     <div class="formrow wide" style="gap:10px"><button id="btnSaveProduct" style="flex:1" onclick="addProduct()">Guardar producto</button><button id="btnCancelEdit" type="button" class="outline hidden" style="flex:1" onclick="cancelEditProduct()">Cancelar edición</button></div>
     </div>
    </div>
    <div class="card" style="margin-top:15px"><h2>Catálogo</h2><div id="productsTable"></div></div>
@@ -443,17 +443,71 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     return canvas.toDataURL('image/jpeg',0.72);
   }
 
+  let editProductId = null;
+  function editProduct(id) {
+    if(!requireAdmin("editar productos"))return;
+    const p = db.products.find(x => x.id === id); if(!p) return;
+    $('prodName').value = p.name;
+    $('prodCategory').value = p.category;
+    $('prodPrice').value = p.price;
+    $('prodCost').value = p.cost || '';
+    $('prodStock').value = p.recipe?.length ? '' : p.stock;
+    $('prodComposite').checked = !!p.recipe?.length;
+    recipeDraft = p.recipe ? p.recipe.map(x => ({...x})) : [];
+    toggleRecipeUI();
+    renderRecipeList();
+    editProductId = id;
+    $('btnSaveProduct').textContent = 'Actualizar producto';
+    $('btnCancelEdit').classList.remove('hidden');
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+
+  function cancelEditProduct() {
+    editProductId = null;
+    $('btnSaveProduct').textContent = 'Guardar producto';
+    $('btnCancelEdit').classList.add('hidden');
+    $('prodName').value='';$('prodPrice').value='';$('prodCost').value='';$('prodStock').value='';$('prodImage').value='';
+    $('prodComposite').checked = false; recipeDraft=[]; toggleRecipeUI(); renderRecipeList();
+  }
+
+  function deleteProduct(id) {
+    if(!requireAdmin("eliminar productos"))return;
+    const p = db.products.find(x => x.id === id); if(!p) return;
+    const inUse = db.products.some(prod => prod.recipe && prod.recipe.some(r => r.productId === id));
+    if (inUse) {
+      alert('No puedes eliminar este producto porque es ingrediente de una receta. Modifica la receta primero.');
+      return;
+    }
+    if(!confirm(`¿Eliminar el producto "${p.name}"?`)) return;
+    db.products = db.products.filter(x => x.id !== id);
+    save();
+  }
+
   async function addProduct(){
-    if(!requireAdmin("crear productos"))return;
+    if(!requireAdmin("crear o editar productos"))return;
     const name=$('prodName').value.trim(),price=+$('prodPrice').value,stock=+$('prodStock').value||0,category=$('prodCategory').value,cost=+$('prodCost').value||0,file=$('prodImage').files[0];
     if(!name||price<=0)return alert('Ingresa nombre y precio válido.');
     try{
-      const image=await compressProductImage(file);
+      let image = '';
+      if(file) image = await compressProductImage(file);
+      
       const recipe=$('prodComposite').checked?recipeDraft.map(x=>({...x})):[];
       if($('prodComposite').checked&&!recipe.length)return alert('Agrega al menos un componente para la receta.');
-      db.products.push({id:Date.now(),name,price,cost,stock:recipe.length?999999:Math.max(0,stock),category,image,recipe});
-      recipeDraft=[];$('prodComposite').checked=false;$('recipeEditor').classList.add('hidden');renderRecipeList();
-      $('prodName').value='';$('prodPrice').value='';$('prodCost').value='';$('prodStock').value='';$('prodImage').value='';
+      
+      if(editProductId) {
+        const p = db.products.find(x => x.id === editProductId);
+        if(p) {
+          p.name = name; p.price = price; p.cost = cost; p.category = category; p.recipe = recipe;
+          if(file) p.image = image;
+          if(!recipe.length) p.stock = Math.max(0,stock);
+          else p.stock = 999999;
+        }
+        cancelEditProduct();
+      } else {
+        db.products.push({id:Date.now(),name,price,cost,stock:recipe.length?999999:Math.max(0,stock),category,image:file?image:'',recipe});
+        recipeDraft=[];$('prodComposite').checked=false;$('recipeEditor').classList.add('hidden');renderRecipeList();
+        $('prodName').value='';$('prodPrice').value='';$('prodCost').value='';$('prodStock').value='';$('prodImage').value='';
+      }
       save();
     }catch(e){alert('No se pudo cargar la imagen: '+e.message)}
   }
@@ -566,7 +620,7 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     renderTicketHistory();
     refreshTicketSelect();
     refreshRecipeIngredientOptions();
-    $('productsTable').innerHTML=table(['Imagen','Producto','Categoría','Precio','Costo','Existencias / receta'],db.products.map(x=>`<tr><td>${x.image?`<img src="${x.image}" style="width:48px;height:48px;object-fit:cover;border-radius:8px">`:'—'}</td><td>${x.name}</td><td>${x.category||'Otros'}</td><td>${money(x.price)}</td><td>${money(x.cost||0)}</td><td>${x.recipe?.length?'Compuesto: '+x.recipe.map(r=>(db.products.find(p=>p.id===r.productId)?.name||'Componente')+' × '+r.qty).join(', '):x.stock}</td></tr>`));
+    $('productsTable').innerHTML=table(['Imagen','Producto','Categoría','Precio','Costo','Existencias / receta','Acciones'],db.products.map(x=>`<tr><td>${x.image?`<img src="${x.image}" style="width:48px;height:48px;object-fit:cover;border-radius:8px">`:'—'}</td><td>${x.name}</td><td>${x.category||'Otros'}</td><td>${money(x.price)}</td><td>${money(x.cost||0)}</td><td>${x.recipe?.length?'Compuesto: '+x.recipe.map(r=>(db.products.find(p=>p.id===r.productId)?.name||'Componente')+' × '+r.qty).join(', '):x.stock}</td><td><button class="soft" onclick="editProduct(${x.id})">Editar</button> <button style="background:#ffe0dc" onclick="deleteProduct(${x.id})">Borrar</button></td></tr>`));
     $('stockProduct').innerHTML=db.products.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');$('stockTable').innerHTML=table(['Producto','Existencias','Precio'],db.products.map(x=>`<tr><td>${x.name}</td><td>${x.stock}</td><td>${money(x.price)}</td></tr>`));
     let cash=db.cash.reduce((s,x)=>s+(x.type==='in'?x.amount:-x.amount),0);$('cashBalance').textContent=money(cash);$('cashStatus').textContent=db.cashOpen?'Abierta':'Cerrada';$('cashTable').innerHTML=table(['Fecha','Concepto','Tipo','Valor'],db.cash.map(x=>`<tr><td>${x.date}</td><td>${x.desc}</td><td>${x.type==='in'?'Entrada':'Salida'}</td><td class="${x.type==='in'?'green':'red'}">${money(x.amount)}</td></tr>`));
     $('accReceivable').textContent=money(rec);$('accPayable').textContent=money(pay);$('accPaidIn').textContent=money(db.payments.filter(x=>x.type==='receivable').reduce((s,x)=>s+x.amount,0));$('accPaidOut').textContent=money(db.payments.filter(x=>x.type==='payable').reduce((s,x)=>s+x.amount,0));
