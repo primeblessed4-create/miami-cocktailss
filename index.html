@@ -169,7 +169,7 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <!-- Conexión y Lógica MIAMI COCKTAILSS -->
-<div id="ticketPaymentModal" class="login-screen hidden" style="z-index:30">
+<div id="ticketPaymentModal" class="login-screen" style="z-index:30;display:none">
  <div class="login-card">
   <h2>Cerrar y cobrar ticket</h2>
   <p class="sub" id="ticketPaymentTotal"></p>
@@ -375,11 +375,11 @@ table{width:100%;border-collapse:collapse;background:white;border-radius:14px;ov
     $('ticketPaymentTotal').textContent='Total a cobrar: '+money(ticketTotal(t));
     $('ticketPaymentCustomer').value=t.customer||'';
     $('ticketPaymentMethod').value='Efectivo';
-    $('ticketPaymentModal').classList.remove('hidden');
+    $('ticketPaymentModal').style.display='grid';
   }
   function cancelCloseTicket(){
     pendingCloseTicketId=null;
-    $('ticketPaymentModal').classList.add('hidden');
+    $('ticketPaymentModal').style.display='none';
   }
   function confirmCloseTicket(){
     const id=pendingCloseTicketId,t=db.tickets.find(x=>x.id===id&&x.status==='open');if(!t)return cancelCloseTicket();
