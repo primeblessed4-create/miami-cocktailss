@@ -316,9 +316,15 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
   function initFirestoreSync(){
     setCloudStatus('☁ Conectando…', '#a87900');
     miamiDataRef.onSnapshot({ includeMetadataChanges: true }, doc => {
-      // No permitir que una instantánea antigua reemplace cambios locales
-      // mientras hay escrituras propias pendientes o todavía sin confirmar.
-      if(pendingCloudWrites > 0 || doc.metadata.hasPendingWrites) return;
+      // Ignorar instantáneas de la caché local: pueden contener una versión
+      // anterior y no deben reemplazar el estado actual de la aplicación.
+      if(doc.metadata && doc.metadata.fromCache) {
+        setCloudStatus('☁ Consultando datos del servidor…', '#a87900');
+        return;
+      }
+
+      // No permitir que una instantánea reemplace cambios locales pendientes.
+      if(pendingCloudWrites > 0 || (doc.metadata && doc.metadata.hasPendingWrites)) return;
 
       if(doc.exists){
         const data = doc.data() || {};
