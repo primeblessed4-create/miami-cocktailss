@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
 <title>Miami cocktailss · Gestión</title>
 <link rel="apple-touch-icon" href="mascota.png">
 <style>
@@ -119,7 +119,16 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
  <div class="content">
   <section id="inicio" class="page">
    <h1>¡Hola! 👋</h1><div class="sub">Este es el resumen de tu negocio.</div>
-   <div class="card" style="margin:15px 0"><div class="sectionhead"><div><h2 style="margin-bottom:4px">Consultar ventas por día</h2><small class="role-note">Selecciona una fecha para ver las ventas registradas ese día.</small></div><input id="dashboardDate" type="date" aria-label="Filtrar ventas por día" onchange="render()"></div></div>
+   <div class="card" style="margin:15px 0">
+    <div class="sectionhead" style="align-items:flex-end;flex-wrap:wrap">
+     <div><h2 style="margin-bottom:4px">Consultar ventas por período</h2><small class="role-note">Selecciona una fecha inicial y una fecha final para consultar las ventas.</small></div>
+     <div class="formrow" style="margin:0;flex:1;min-width:260px">
+      <label style="flex:1;min-width:130px">Fecha inicial<input id="dashboardStartDate" type="date" aria-label="Fecha inicial" onchange="render()" style="display:block;width:100%;border:1px solid var(--line);border-radius:10px;padding:10px"></label>
+      <label style="flex:1;min-width:130px">Fecha final<input id="dashboardEndDate" type="date" aria-label="Fecha final" onchange="render()" style="display:block;width:100%;border:1px solid var(--line);border-radius:10px;padding:10px"></label>
+      <label style="flex:1;min-width:150px">Método de pago<select id="dashboardPaymentMethod" aria-label="Filtrar por método de pago" onchange="render()" style="display:block;width:100%;border:1px solid var(--line);border-radius:10px;padding:10px"><option value="all">Todos los métodos</option><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option></select></label>
+     </div>
+    </div>
+   </div>
    <div class="grid">
     <div class="card metric"><span class="ico">💰</span><label>Ventas del día</label><strong id="mSales">$0</strong><small>Ventas registradas</small></div>
     <div class="card metric"><span class="ico">📈</span><label>Utilidad estimada</label><strong id="mProfit">$0</strong><small>Ventas menos costos registrados</small></div>
@@ -130,7 +139,11 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
     <div class="card"><h2>Actividad del día seleccionado</h2><div class="barrow"><span>Ventas</span><div class="bar"><i id="salesBar" style="width:0%"></i></div><b id="salesBarText">$0</b></div><div class="barrow"><span>Gastos</span><div class="bar"><i id="expenseBar" style="width:0%;background:#f2c94c"></i></div><b id="expenseBarText">$0</b></div><div class="notice">Los indicadores se actualizan en tiempo real con Firebase Firestore.</div></div>
     <div class="card"><h2>Últimos movimientos</h2><div id="recent"></div></div>
    </div>
-   <div class="card" style="margin-top:15px"><h2>Ventas del día seleccionado</h2><div id="dailySalesTable"></div></div>
+   <div class="grid" style="margin-top:15px">
+    <div class="card metric"><label>Dinero recibido en efectivo</label><strong id="dashboardCashTotal">$0</strong><small>En el período seleccionado</small></div>
+    <div class="card metric"><label>Dinero recibido por transferencia</label><strong id="dashboardTransferTotal">$0</strong><small>En el período seleccionado</small></div>
+   </div>
+   <div class="card" style="margin-top:15px"><h2>Ventas del período seleccionado</h2><div id="dailySalesTable"></div></div>
    <div class="card" style="margin-top:15px"><h2>Accesos rápidos</h2><div class="quick"><button onclick="showPage('ventas')">＋ Registrar venta</button><button onclick="showPage('cuentas')">＋ Registrar cuenta</button><button onclick="showPage('gastos')">＋ Registrar gasto</button></div></div>
   </section>
   <section id="ventas" class="page hidden">
@@ -149,7 +162,7 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
      <button class="dark" style="width:100%" onclick="addSale()">Confirmar y cobrar venta</button>
      <button class="soft" style="width:100%;margin-top:8px" onclick="openTicket()">Guardar como ticket abierto</button>
      <div class="formrow"><select id="ticketSelect"><option value="">Seleccionar ticket abierto para agregar consumo</option></select></div>
-     <button class="outline" style="width:100%" onclick="appendToTicket()">Agregar consumo al ticket seleccionado</button>
+     <button id="btnAppendTicket" class="outline" style="width:100%" onclick="appendToTicket()">Agregar consumo al ticket seleccionado</button>
      <div class="notice">Puedes cobrar una venta de inmediato o dejarla abierta como ticket. El inventario se descuenta al registrar cada consumo.</div>
     </div>
    </div>
@@ -289,7 +302,7 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
 
   let db={sales:[],products:[],accounts:[],payments:[],expenses:[],cash:[],tickets:[],cashOpen:false};
 
- function initFirestoreSync(){
+function initFirestoreSync(){
     miamiFirestore.collection('negocio').doc('miami_data').onSnapshot(doc => {
       if(doc.exists){
         const data = doc.data();
@@ -384,11 +397,22 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
     $('saleTotal').textContent=money(saleCart.reduce((s,x)=>s+x.price*x.qty,0));
   }
   function cartSnapshot(){return saleCart.map(x=>({...x}));}
+  function updateAppendTicketButton(){
+    const sel=$('ticketSelect'),btn=$('btnAppendTicket');
+    if(!sel||!btn)return;
+    const selected=!!sel.value;
+    btn.style.background=selected?'#EB6320':'';
+    btn.style.color=selected?'#fff':'';
+    btn.style.borderColor=selected?'#EB6320':'';
+    btn.classList.toggle('ticket-selected',selected);
+  }
   function refreshTicketSelect(){
     const sel=$('ticketSelect');if(!sel)return;const old=sel.value;
     sel.innerHTML='<option value="">Seleccionar ticket abierto para agregar consumo</option>'+db.tickets.filter(t=>t.status==='open').map(t=>`<option value="${t.id}">${t.customer||'Cliente'} · ${money(ticketTotal(t))}</option>`).join('');
     if(db.tickets.some(t=>String(t.id)===old&&t.status==='open'))sel.value=old;
+    updateAppendTicketButton();
   }
+  $('ticketSelect').addEventListener('change',updateAppendTicketButton);
   function ticketTotal(t){return (t.items||[]).reduce((a,x)=>a+x.price*x.qty,0)}
   function openTicket(){
     if(!saleCart.length)return alert('Agrega productos antes de abrir un ticket.');
@@ -403,7 +427,10 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
     if(!saleCart.length)return alert('Agrega productos al consumo antes de continuar.');
     if(!canConsume(saleCart))return alert('Inventario insuficiente para este consumo.');
     const items=cartSnapshot();consumeItems(items,-1);
-    t.items.push(...items);saleCart=[];save();
+    t.items.push(...items);saleCart=[];
+    $('ticketSelect').value='';
+    updateAppendTicketButton();
+    save();
   }
   function closeTicket(id){
     const t=db.tickets.find(x=>x.id===id&&x.status==='open');if(!t)return;
@@ -743,20 +770,43 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
     return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   }
   function dashboardDateKey(value){
-    if(!value)return today();
-    const [year,month,day]=value.split('-').map(Number);
-    return new Date(year,month-1,day).toLocaleDateString('es-CO');
+    if(!value)return localDateInputValue();
+    return value;
+  }
+  function storedDateToISO(value){
+    if(!value)return '';
+    // Los registros históricos se guardan como fecha local en formato es-CO (d/m/aaaa).
+    const parts=String(value).split(/[\\/.-]/).map(Number);
+    if(parts.length===3){
+      let year,month,day;
+      if(String(parts[0]).length===4){[year,month,day]=parts;}
+      else {[day,month,year]=parts;}
+      if(year&&month&&day)return String(year).padStart(4,'0')+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    }
+    return '';
   }
 
   function render(){
-    const dashboardDate=$('dashboardDate');
-    if(dashboardDate&&!dashboardDate.value)dashboardDate.value=localDateInputValue();
-    const selectedDay=dashboardDateKey(dashboardDate?.value);
-    const selectedSalesRows=db.sales.filter(x=>x.date===selectedDay);
-    let todaySales=selectedSalesRows.reduce((s,x)=>s+x.total,0),expenses=db.expenses.reduce((s,x)=>s+x.amount,0),sales=db.sales.reduce((s,x)=>s+x.total,0),rec=db.accounts.filter(x=>x.type==='receivable').reduce((s,x)=>s+x.total-x.paid,0),pay=db.accounts.filter(x=>x.type==='payable').reduce((s,x)=>s+x.total-x.paid,0),todayExp=db.expenses.filter(x=>x.date===selectedDay).reduce((s,x)=>s+x.amount,0);
+    const startInput=$('dashboardStartDate'),endInput=$('dashboardEndDate'),methodInput=$('dashboardPaymentMethod');
+    const defaultDate=localDateInputValue();
+    if(startInput&&!startInput.value)startInput.value=defaultDate;
+    if(endInput&&!endInput.value)endInput.value=defaultDate;
+    const startDate=dashboardDateKey(startInput?.value),endDate=dashboardDateKey(endInput?.value);
+    const paymentMethod=methodInput?.value||'all';
+    const validRange=startDate<=endDate;
+    const periodSales=validRange?db.sales.filter(x=>{const d=storedDateToISO(x.date);return d&&d>=startDate&&d<=endDate;}):[];
+    const selectedSalesRows=periodSales.filter(x=>paymentMethod==='all'||x.method===paymentMethod);
+    const cashTotal=periodSales.filter(x=>x.method==='Efectivo').reduce((s,x)=>s+x.total,0);
+    const transferTotal=periodSales.filter(x=>x.method==='Transferencia').reduce((s,x)=>s+x.total,0);
+    let todaySales=selectedSalesRows.reduce((s,x)=>s+x.total,0),expenses=db.expenses.reduce((s,x)=>s+x.amount,0),sales=db.sales.reduce((s,x)=>s+x.total,0),rec=db.accounts.filter(x=>x.type==='receivable').reduce((s,x)=>s+x.total-x.paid,0),pay=db.accounts.filter(x=>x.type==='payable').reduce((s,x)=>s+x.total-x.paid,0),todayExp=validRange?db.expenses.filter(x=>{const d=storedDateToISO(x.date);return d&&d>=startDate&&d<=endDate;}).reduce((s,x)=>s+x.amount,0):0;
+    $('dashboardCashTotal').textContent=money(cashTotal);
+    $('dashboardTransferTotal').textContent=money(transferTotal);
+    if(!validRange){
+      $('dailySalesTable').innerHTML='<p style="color:#c44;padding:12px">La fecha inicial no puede ser posterior a la fecha final.</p>';
+    }
     $('mSales').textContent=money(todaySales);$('mProfit').textContent=money(todaySales-todayExp);$('mReceivable').textContent=money(rec);$('mPayable').textContent=money(pay);
     $('salesBar').style.width=Math.min(100,todaySales/Math.max(1,todaySales+todayExp)*100)+'%';$('expenseBar').style.width=Math.min(100,todayExp/Math.max(1,todaySales+todayExp)*100)+'%';$('salesBarText').textContent=money(todaySales);$('expenseBarText').textContent=money(todayExp);
-    $('dailySalesTable').innerHTML=table(['Hora','Producto','Cantidad','Total','Pago'],selectedSalesRows.map(x=>`<tr><td>${saleTime(x)}</td><td>${x.name}</td><td>${x.qty}</td><td>${money(x.total)}</td><td>${x.method||'—'}</td></tr>`));
+    if(validRange)$('dailySalesTable').innerHTML=table(['Fecha','Hora','Producto','Cantidad','Total','Pago'],selectedSalesRows.map(x=>`<tr><td>${x.date||'—'}</td><td>${saleTime(x)}</td><td>${x.name}</td><td>${x.qty}</td><td>${money(x.total)}</td><td>${x.method||'—'}</td></tr>`));
     $('recent').innerHTML=[...db.sales.slice(0,3).map(x=>({t:'Venta · '+x.name,v:x.total})),...db.expenses.slice(0,2).map(x=>({t:'Gasto · '+x.desc,v:-x.amount}))].slice(0,5).map(x=>`<div class="activity"><span>${x.t}</span><b class="${x.v<0?'red':'green'}">${money(x.v)}</b></div>`).join('')||'<small>Sin movimientos todavía.</small>';
     $('salesTable').innerHTML=table(['Fecha','Hora','Producto','Cantidad','Total','Pago','Acciones'],db.sales.map(x=>`<tr><td>${x.date}</td><td>${saleTime(x)}</td><td>${x.name}</td><td>${x.qty}</td><td>${money(x.total)}</td><td>${x.method||'—'}</td><td style="white-space:nowrap">${isAdmin()?`<button class="soft" onclick="editSale(${x.id})">Editar</button> <button style="background:#ffe0dc" onclick="deleteSale(${x.id})">Eliminar</button>`:'—'}</td></tr>`));
     $('ticketsTable').innerHTML=table(['Fecha','Cliente','Consumo','Total','Estado','Acciones'],db.tickets.filter(t=>t.status==='open').map(t=>`<tr><td>${t.date}</td><td>${t.customer||'Sin nombre'}</td><td>${(t.items||[]).map(x=>x.name+' x'+x.qty).join(', ')}</td><td>${money(ticketTotal(t))}</td><td><span class="pill">Abierto</span></td><td><button class="dark" onclick="closeTicket(${t.id})">Cerrar y cobrar</button> <button class="outline" onclick="cancelTicket(${t.id})">Cancelar</button></td></tr>`));
