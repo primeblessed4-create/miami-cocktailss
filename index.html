@@ -168,6 +168,19 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
    </div>
    <div class="card" style="margin-top:15px"><h2>Tickets abiertos</h2><div id="ticketsTable"></div></div>
    <div class="card" style="margin-top:15px" id="salesHistoryCard"><h2>Ventas registradas</h2><div id="salesTable"></div></div>
+  <div class="card" style="margin-top:15px" data-admin-only>
+   <h2>Acumulados históricos y limpieza</h2>
+   <div class="notice">Los acumulados históricos se guardan por separado en Firebase. Limpiar ventas y tickets NO los borra. Los productos y el inventario no se modifican.</div>
+   <div class="grid" style="margin-bottom:14px">
+    <div class="card metric"><label>Acumulado histórico · Efectivo</label><strong id="salesTotalCash">$0</strong></div>
+    <div class="card metric"><label>Acumulado histórico · Transferencias</label><strong id="salesTotalTransfer">$0</strong></div>
+   </div>
+   <div class="actions">
+    <button class="soft" onclick="clearSalesAndTickets()">Limpiar todas las ventas y tickets</button>
+    <button class="outline" onclick="clearHistoricalTotal('cash')">Borrar acumulado de efectivo</button>
+    <button class="outline" onclick="clearHistoricalTotal('transfer')">Borrar acumulado de transferencias</button>
+   </div>
+  </div>
   </section>
   <section id="productos" class="page hidden">
    <div class="sectionhead"><div><h1>Productos</h1><div class="sub">Catálogo de bebidas y artículos de venta.</div></div></div>
@@ -218,7 +231,7 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
    <h1>Reportes</h1><div class="sub">Resumen de los registros sincronizados en Firebase.</div>
    <div class="grid"><div class="card metric"><label>Ventas acumuladas</label><strong id="rSales">$0</strong></div><div class="card metric"><label>Gastos acumulados</label><strong id="rExpenses">$0</strong></div><div class="card metric"><label>Ventas a crédito</label><strong id="rCredit">$0</strong></div><div class="card metric"><label>Flujo neto registrado</label><strong id="rNet">$0</strong></div></div>
    <div class="notice">La utilidad definitiva requiere registrar costos de recetas e insumos. En esta primera versión se muestra una estimación, no un estado contable certificado.</div>
-   <div class="actions"><button onclick="exportCSV()">Exportar movimientos CSV</button><button class="outline" onclick="resetDemo()">Reiniciar datos de demostración</button></div>
+   <div class="actions"><button onclick="exportCSV()">Exportar movimientos CSV</button><button class="outline" onclick="resetDemo()">Reinicio TOTAL (incluye productos)</button></div>
   </section>
  </div>
 </main></div>
@@ -300,7 +313,7 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
 
   try{const saved=sessionStorage.getItem('miamiSession');if(saved)currentUser=JSON.parse(saved)}catch(e){currentUser=null}
 
-  let db={sales:[],products:[],accounts:[],payments:[],expenses:[],cash:[],tickets:[],cashOpen:false};
+  let db={sales:[],products:[],accounts:[],payments:[],expenses:[],cash:[],tickets:[],cashOpen:false,salesTotals:{cash:0,transfer:0}};
 
   const miamiDataRef = miamiFirestore.collection('negocio').doc('miami_data');
   let cloudWriteQueue = Promise.resolve();
@@ -311,6 +324,32 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
     if(!status) return;
     status.textContent = message;
     status.style.color = color || 'inherit';
+  }
+
+  function totalsFromSales(sales){
+    const totals={cash:0,transfer:0};
+    (Array.isArray(sales)?sales:[]).forEach(sale=>{
+      const amount=Number(sale.total)||0;
+      if(sale.method==='Efectivo')totals.cash+=amount;
+      else if(sale.method==='Transferencia')totals.transfer+=amount;
+    });
+    return totals;
+  }
+
+  function ensureSalesTotals(){
+    if(!db.salesTotals||typeof db.salesTotals!=='object'){
+      db.salesTotals=totalsFromSales(db.sales);
+    }else{
+      db.salesTotals.cash=Math.max(0,Number(db.salesTotals.cash)||0);
+      db.salesTotals.transfer=Math.max(0,Number(db.salesTotals.transfer)||0);
+    }
+  }
+
+  function changeHistoricalTotal(method,amount){
+    ensureSalesTotals();
+    const value=Number(amount)||0;
+    if(method==='Efectivo')db.salesTotals.cash=Math.max(0,db.salesTotals.cash+value);
+    else if(method==='Transferencia')db.salesTotals.transfer=Math.max(0,db.salesTotals.transfer+value);
   }
 
   function initFirestoreSync(){
@@ -336,7 +375,10 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
           expenses: Array.isArray(data.expenses) ? data.expenses : [],
           cash: Array.isArray(data.cash) ? data.cash : [],
           tickets: Array.isArray(data.tickets) ? data.tickets : [],
-          cashOpen: !!data.cashOpen
+          cashOpen: !!data.cashOpen,
+          salesTotals: data.salesTotals && typeof data.salesTotals === 'object'
+            ? {cash:Math.max(0,Number(data.salesTotals.cash)||0),transfer:Math.max(0,Number(data.salesTotals.transfer)||0)}
+            : totalsFromSales(Array.isArray(data.sales)?data.sales:[])
         };
         db.expenses.forEach(x => { if(!x.id) x.id = Date.now() + Math.random(); });
         db.cash.forEach(x => { if(!x.id) x.id = Date.now() + Math.random(); });
@@ -478,6 +520,7 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
     const customer=t.customer||prompt('Nombre del cliente (opcional):','')||'';
     const total=ticketTotal(t),saleId=Date.now();
     db.sales.unshift({id:saleId,date:today(),createdAt:new Date().toISOString(),name:t.items.map(x=>x.name+' x'+x.qty).join(', '),items:t.items.map(x=>({...x})),qty:t.items.reduce((a,x)=>a+x.qty,0),price:0,total,method,customer,ticketId:t.id});
+    changeHistoricalTotal(method,total);
     if(method.includes('Crédito'))db.accounts.unshift({id:saleId+1,type:'receivable',name:customer||'Cliente sin identificar',desc:'Venta: '+t.items.map(x=>x.name+' x'+x.qty).join(', '),total,paid:0,due:'',created:today(),saleId});
     else if(method!=='Pago mixto')db.cash.push({id:Date.now()+2,saleId,date:today(),type:'in',desc:'Venta: '+t.items.map(x=>x.name).join(', '),amount:total});
     t.status='closed';t.closedAt=today();t.paymentMethod=method;save();
@@ -501,6 +544,32 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
     db.tickets = db.tickets.filter(t => t.status === 'open');
     save();
   }
+  function clearSalesAndTickets(){
+    if(!requireAdmin('limpiar todas las ventas y tickets'))return;
+    const ok=confirm('ADVERTENCIA: Se eliminarán TODAS las ventas y TODOS los tickets (abiertos, cerrados y cancelados). El catálogo de productos y los acumulados históricos de efectivo y transferencias se conservarán. El inventario de tickets que sigan abiertos se devolverá. Esta acción no se puede deshacer. ¿Deseas continuar?');
+    if(!ok)return;
+    // Los tickets abiertos ya descontaron inventario al crearse; al borrarlos,
+    // se devuelve ese consumo. Las ventas cerradas no modifican inventario aquí.
+    db.tickets.filter(ticket=>ticket.status==='open').forEach(ticket=>consumeItems(ticket.items||[],1));
+    db.sales=[];
+    db.tickets=[];
+    save();
+    alert('Ventas y tickets eliminados. El catálogo y los acumulados históricos se conservaron; el inventario de tickets abiertos fue devuelto.');
+  }
+
+  function clearHistoricalTotal(type){
+    if(!requireAdmin('borrar acumulados históricos'))return;
+    const isCash=type==='cash';
+    const label=isCash?'EFECTIVO':'TRANSFERENCIAS';
+    const amount=isCash?(db.salesTotals?.cash||0):(db.salesTotals?.transfer||0);
+    if(!confirm('ADVERTENCIA: Vas a borrar el acumulado histórico de '+label+' ('+money(amount)+'). Esta acción no se puede deshacer y no borrará ventas, tickets ni productos. ¿Deseas continuar?'))return;
+    ensureSalesTotals();
+    if(isCash)db.salesTotals.cash=0;
+    else db.salesTotals.transfer=0;
+    save();
+    alert('El acumulado histórico de '+label.toLowerCase()+' fue reiniciado.');
+  }
+
   function editTicket(id){
     if(!requireAdmin('editar tickets'))return;
     const t=db.tickets.find(x=>x.id===id);if(!t)return;
@@ -534,6 +603,7 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
     const total=saleCart.reduce((s,x)=>s+x.price*x.qty,0),method=$('saleMethod').value,customer=$('saleCustomer').value.trim(),items=cartSnapshot(),saleId=Date.now();
     consumeItems(items,-1);
     db.sales.unshift({id:saleId,date:today(),createdAt:new Date().toISOString(),name:items.map(x=>x.name+' x'+x.qty).join(', '),items,qty:items.reduce((s,x)=>s+x.qty,0),price:0,total,method,customer});
+    changeHistoricalTotal(method,total);
     if(method.includes('Crédito'))db.accounts.unshift({id:saleId+1,type:'receivable',name:customer||'Cliente sin identificar',desc:'Venta: '+items.map(x=>x.name+' x'+x.qty).join(', '),total,paid:0,due:'',created:today(),saleId});
     else if(method!=='Pago mixto')db.cash.push({id:saleId+2,saleId,date:today(),type:'in',desc:'Venta: '+items.map(x=>x.name).join(', '),amount:total});
     saleCart=[];$('saleCustomer').value='';renderSaleCart();save();
@@ -545,7 +615,9 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
     const method=prompt('Método de pago:',sale.method||'Efectivo');if(method===null)return;
     const account=db.accounts.find(x=>x.saleId===id);
     if(account&&total<account.paid)return alert('El total no puede ser menor a los abonos registrados.');
+    changeHistoricalTotal(sale.method,-Number(sale.total||0));
     sale.total=total;sale.method=method;
+    changeHistoricalTotal(sale.method,total);
     const cash=db.cash.find(x=>x.saleId===id);if(cash)cash.amount=total;
     if(account)account.total=total;
     save();
@@ -557,6 +629,7 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
     if(linkedAccount&&linkedAccount.paid>0)return alert('No se puede eliminar esta venta porque ya tiene abonos registrados.');
     if(!confirm('¿Eliminar esta venta? Se devolverá el inventario de sus productos/componentes.'))return;
     consumeItems(sale.items||[],1);
+    changeHistoricalTotal(sale.method,-Number(sale.total||0));
     db.sales=db.sales.filter(x=>x.id!==id);db.cash=db.cash.filter(x=>x.saleId!==id);db.accounts=db.accounts.filter(x=>x.saleId!==id);
     save();
   }
@@ -839,6 +912,9 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
     const cashTotal=periodSales.filter(x=>x.method==='Efectivo').reduce((s,x)=>s+x.total,0);
     const transferTotal=periodSales.filter(x=>x.method==='Transferencia').reduce((s,x)=>s+x.total,0);
     let todaySales=selectedSalesRows.reduce((s,x)=>s+x.total,0),expenses=db.expenses.reduce((s,x)=>s+x.amount,0),sales=db.sales.reduce((s,x)=>s+x.total,0),rec=db.accounts.filter(x=>x.type==='receivable').reduce((s,x)=>s+x.total-x.paid,0),pay=db.accounts.filter(x=>x.type==='payable').reduce((s,x)=>s+x.total-x.paid,0),todayExp=validRange?db.expenses.filter(x=>{const d=storedDateToISO(x.date);return d&&d>=startDate&&d<=endDate;}).reduce((s,x)=>s+x.amount,0):0;
+    ensureSalesTotals();
+    if($('salesTotalCash'))$('salesTotalCash').textContent=money(db.salesTotals.cash);
+    if($('salesTotalTransfer'))$('salesTotalTransfer').textContent=money(db.salesTotals.transfer);
     $('dashboardCashTotal').textContent=money(cashTotal);
     $('dashboardTransferTotal').textContent=money(transferTotal);
     if(!validRange){
@@ -876,8 +952,8 @@ body.dark-mode .pill { background: #333 !important; color: #ddd !important; }
 
   function resetDemo(){
     if(!requireAdmin("reiniciar los datos"))return;
-    if(confirm('¿Borrar todos los registros guardados en Firestore?')){
-      db={sales:[],products:[],accounts:[],payments:[],expenses:[],cash:[],tickets:[],cashOpen:false};
+    if(confirm('ADVERTENCIA: Este reinicio TOTAL borrará ventas, tickets, productos, inventario, cuentas, gastos, caja y acumulados históricos. No se puede deshacer. ¿Deseas continuar?')){
+      db={sales:[],products:[],accounts:[],payments:[],expenses:[],cash:[],tickets:[],cashOpen:false,salesTotals:{cash:0,transfer:0}};
       save();
     }
   }
